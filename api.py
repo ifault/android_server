@@ -18,6 +18,7 @@ async def get_accounts():
         "errorCode": "0",
         "data": {"items": list(accounts)}
     }
+    print(len(accounts))
     return JSONResponse(content=results, status_code=200)
 
 
