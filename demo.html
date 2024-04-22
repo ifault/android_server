@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Example</title>
+</head>
+<body>
+    <h1>WebSocket Example</h1>
+
+    <script>
+        // 创建 WebSocket 连接
+        var socket = new WebSocket("ws://localhost:1234/ws/");
+
+        // 连接成功时的回调函数
+        socket.onopen = function() {
+            console.log("WebSocket连接已打开");
+        };
+
+        // 接收到消息时的回调函数
+        socket.onmessage = function(event) {
+            var message = event.data;
+            console.log("收到消息: " + message);
+        };
+
+        // 连接关闭时的回调函数
+        socket.onclose = function(event) {
+            console.log("WebSocket连接已关闭");
+        };
+
+        // 发送消息
+        function sendMessage() {
+            var message = "Hello, WebSocket!";
+            socket.send(message);
+            console.log("发送消息: " + message);
+        }
+    </script>
+</body>
+</html>

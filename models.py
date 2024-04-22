@@ -45,3 +45,8 @@ def fake_accounts(quantity: int) -> List[IAccount]:
         accounts.append(account.dict())
 
     return accounts
+
+
+class RequestData(BaseModel):
+    password: str
+    username: str

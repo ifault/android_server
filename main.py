@@ -1,14 +1,23 @@
 import uuid
 from contextlib import asynccontextmanager
-
+import os
+import logging
 from faker import Faker
 from fastapi import FastAPI
 from tortoise import fields, models, Tortoise
 from tortoise.contrib.fastapi import register_tortoise
 from api import api_router
-import os
+from ws import ws_router
+from models import Account
 
-from models import fake_accounts, Account
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler("app.log"),
+        logging.StreamHandler()
+    ]
+)
 
 
 @asynccontextmanager
@@ -45,7 +54,7 @@ async def root():
 
 
 app.include_router(api_router, prefix="/api")
-
+app.include_router(ws_router, prefix="/ws")
 if __name__ == "__main__":
     import uvicorn
 
