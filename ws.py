@@ -58,7 +58,7 @@ async def handle_task(socket_id: str):
         tasks.append(task)
 
     await asyncio.gather(*tasks)
-    await notify(socket_id, 0)
+    await notify(socket_id, -1, "所有订单处理完成")
 
 
 async def handle_order(socket_id: str, account: Account):
@@ -72,6 +72,7 @@ async def handle_order(socket_id: str, account: Account):
                 account.details = "等待支付"
                 await account.save()
                 await notify(socket_id, 1, "订单等待支付")
+                break
             else:
                 await asyncio.sleep(10)
     except Exception as e:

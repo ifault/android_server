@@ -1,3 +1,4 @@
+import datetime
 import uuid
 
 from pydantic import BaseModel
@@ -19,12 +20,21 @@ class IAccount(BaseModel):
 
 
 class Account(Model):
-    uuid = fields.CharField(pk=True,max_length=50)
+    uuid = fields.CharField(pk=True, max_length=50)
     username = fields.CharField(max_length=50)
     password = fields.CharField(max_length=50)
     orderStr = fields.TextField()
     details = fields.TextField()
     status = fields.IntField()
+
+
+class Users(Model):
+    id = fields.IntField(pk=True)
+    username = fields.CharField(max_length=255, unique=True, index=True)
+    token = fields.CharField(max_length=255, unique=True, index=True, default=str(uuid.uuid4().hex))
+    expired = fields.DatetimeField(default=datetime.datetime.now() + datetime.timedelta(days=30))
+    created_at = fields.DatetimeField(auto_now_add=True)
+    access_token = fields.CharField(max_length=255, null=True)
 
 
 def fake_accounts(quantity: int) -> List[IAccount]:
