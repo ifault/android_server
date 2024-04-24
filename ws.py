@@ -2,17 +2,26 @@ import logging
 import uuid
 
 import asyncio
-from fastapi import APIRouter, WebSocket
+from fastapi import APIRouter, WebSocket, HTTPException
 from starlette.websockets import WebSocketDisconnect
 
 from models import Account
+from service import is_token_expired
 
 ws_router = APIRouter()
 ws = {}
 
 
+async def verify_token(token: str):
+    if token is None or token == "":
+        raise HTTPException(status_code=401, detail="token不存在")
+    if is_token_expired(token):
+        raise HTTPException(status_code=401, detail="token过期,请重新验证")
+
+
 @ws_router.websocket("/")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket, token: str):
+    await verify_token(token)
     await websocket.accept()
     await process_websocket(websocket)
 
@@ -78,7 +87,6 @@ async def handle_order(socket_id: str, account: Account):
     except Exception as e:
         account.details = "订单发生异常"
         await account.save()
-        print("子任务发生异常:", str(e))
         await notify(socket_id, 1, "订单发生异常")
 
 

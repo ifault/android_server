@@ -34,7 +34,6 @@ async def get_accounts(verified_token: HTTPAuthorizationCredentials = Depends(ve
         "errorCode": "0",
         "data": {"items": list(accounts)}
     }
-    print(len(accounts))
     return JSONResponse(content=results, status_code=200)
 
 
@@ -76,7 +75,6 @@ async def verify(token: str):
         await user.save()
         results = {"data": {"accessToken": access_token, "tokenType": "bearer", "refreshToken": refersh_token},
                    'errorCode': 0}
-        print(results)
         return JSONResponse(
             content=results,
             status_code=200)
