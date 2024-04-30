@@ -21,7 +21,7 @@ async def verify_token(token: str):
 
 @ws_router.websocket("/")
 async def websocket_endpoint(websocket: WebSocket, token: str):
-    await verify_token(token)
+    # await verify_token(token)
     await websocket.accept()
     await process_websocket(websocket)
 
@@ -29,10 +29,8 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
 async def process_websocket(websocket: WebSocket):
     socket_id = str(uuid.uuid4())
     ws[socket_id] = websocket
-    periodically = None
     task = None
     try:
-        periodically = asyncio.create_task(send_message_periodically(socket_id))
         task = asyncio.create_task(handle_task(socket_id))
         while True:
             data = await websocket.receive_text()
@@ -43,19 +41,8 @@ async def process_websocket(websocket: WebSocket):
         logging.error(e)
         del ws[socket_id]
     finally:
-        if periodically:
-            periodically.cancel()
         if task:
             task.cancel()
-
-
-async def send_message_periodically(socket_id: str):
-    try:
-        while True:
-            await notify(socket_id, 0, "服务器运行正常")
-            await asyncio.sleep(10)
-    except asyncio.CancelledError:
-        await notify(socket_id, 0, "服务器发生异常，任务结束")
 
 
 async def handle_task(socket_id: str):

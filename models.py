@@ -3,9 +3,14 @@ import uuid
 
 from pydantic import BaseModel
 from faker import Faker
-from typing import List
+from typing import List, Optional
 from tortoise import fields
 from tortoise.models import Model
+
+
+class ILogin(BaseModel):
+    username: str
+    password: str
 
 
 class IAccount(BaseModel):
@@ -23,18 +28,25 @@ class Account(Model):
     uuid = fields.CharField(pk=True, max_length=50)
     username = fields.CharField(max_length=50)
     password = fields.CharField(max_length=50)
-    orderStr = fields.TextField()
-    details = fields.TextField()
-    status = fields.IntField()
+    order_str = fields.TextField(null=True, default="")
+    details = fields.TextField(null=True)
+    status = fields.IntField(default=0)
 
 
 class Users(Model):
     id = fields.IntField(pk=True)
     username = fields.CharField(max_length=255, unique=True, index=True)
-    token = fields.CharField(max_length=255, unique=True, index=True, default=str(uuid.uuid4().hex))
+    password = fields.CharField(max_length=255, unique=True, index=True, default=str(uuid.uuid4().hex))
     expired = fields.DatetimeField(default=datetime.datetime.now() + datetime.timedelta(days=30))
     created_at = fields.DatetimeField(auto_now_add=True)
     access_token = fields.CharField(max_length=255, null=True)
+
+
+class Paid(Model):
+    id = fields.IntField(pk=True)
+    username = fields.CharField(max_length=255)
+    order_str = fields.TextField(null=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
 
 
 def fake_accounts(quantity: int) -> List[IAccount]:
@@ -60,3 +72,19 @@ def fake_accounts(quantity: int) -> List[IAccount]:
 class RequestData(BaseModel):
     password: str
     username: str
+    status: Optional[int] = 0
+
+
+class DeleteData(BaseModel):
+    uuid: Optional[str] = None
+    status: Optional[str] = None
+
+
+class statusData(BaseModel):
+    uuid: str
+    status: int
+
+
+class bindData(BaseModel):
+    uuid: str
+    card: str
