@@ -4,3 +4,4 @@ db.sqlite3-wal
 test.py
 test_main.http
 app.log
+test_main.http
