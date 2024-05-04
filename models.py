@@ -1,4 +1,5 @@
 import datetime
+import json
 import uuid
 
 from pydantic import BaseModel
@@ -21,16 +22,19 @@ class IAccount(BaseModel):
     details: str
     create_time: str
     pay_time: str
-    status: int
+    status: str
 
 
 class Account(Model):
     uuid = fields.CharField(pk=True, max_length=50)
     username = fields.CharField(max_length=50)
     password = fields.CharField(max_length=50)
-    order_str = fields.TextField(null=True, default="")
+    order = fields.TextField(null=True, default="")
     details = fields.TextField(null=True)
-    status = fields.IntField(default=0)
+    status = fields.TextField(default="free")
+    create_time = fields.DatetimeField(auto_now_add=True)
+    update_time = fields.DatetimeField(auto_now=True)
+    order_time = fields.DatetimeField(null=True)
 
 
 class Users(Model):
@@ -69,22 +73,22 @@ def fake_accounts(quantity: int) -> List[IAccount]:
     return accounts
 
 
-class RequestData(BaseModel):
+class IRequestData(BaseModel):
     password: str
     username: str
-    status: Optional[int] = 0
+    status: Optional[str] = "free"
 
 
-class DeleteData(BaseModel):
+class IDeleteData(BaseModel):
     uuid: Optional[str] = None
     status: Optional[str] = None
 
 
-class statusData(BaseModel):
+class IStatusData(BaseModel):
     uuid: str
-    status: int
+    status: str
 
 
-class bindData(BaseModel):
+class IBindData(BaseModel):
     uuid: str
     card: str

@@ -58,14 +58,14 @@ class Desney():
 
     def store_cookies(self):
         try:
-            with open("cookies.json", "w") as f:
+            with open(f"./cookies/{self.uuid}.json", "w") as f:
                 json.dump(self.session.cookies.get_dict(), f)
         except Exception as e:
             print(e)
 
     def load_cookies(self):
         try:
-            with open("cookies.json", "r") as f:
+            with open(f"./cookies/{self.uuid}.json", "r") as f:
                 cookies = json.load(f)
                 self.session.cookies.update(cookies)
         except Exception as e:
@@ -104,6 +104,9 @@ class Desney():
                 "passwordEncrypted": False, "langPref": "zh", "sourceId": "DPRD-SHDR.MOBILE.ANDROID-PROD",
                 "sessionid": "undefined"}
         response = self.session.post(self.login_url, json=data, headers=self.default_headers, verify=False)
+        print("=================Login=================")
+        print(response.json())
+        print("=================Login=================")
         if response.status_code == 200:
             self.store_cookies()
             res = response.json()
@@ -123,8 +126,9 @@ class Desney():
                 "mobilePhone": profile.get("mobile"),
                 "fullName": ""
             }
+            return True, "登录成功"
         else:
-            print(response.json())
+            return False, "登录失败,用户名密码错误"
 
     def php_sync(self):
         data = {"swid": self.sw_id, "accessToken": self.access_token}
@@ -388,10 +392,6 @@ class Desney():
         return formatted_datetime_str
 
     def confirm_morning_order(self, vids, id_card, start_time, en_date, cn_date, price, total_price):
-        result = self.get_morning_target_day_price(target_date)
-        if not result:
-            return None
-
         headers = {'Accept': 'application/json, text/plain, */*',
                    'Accept-Encoding': 'gzip, deflate',
                    'Accept-Language': 'zh,en-US;q=0.9,en;q=0.8',
@@ -417,7 +417,7 @@ class Desney():
                    'X-View-Type': 'mobile'}
         data = {"contactForm": {"countrycode": "CN", "phone": "8613127778188", "governmentId": id_card,
                                 "items": {"quantity": len(vids), "productType": "shdr-early-park-entry-pass",
-                                          "eventDate":en_date, "text": "早享卡",
+                                          "eventDate": en_date, "text": "早享卡",
                                           "pricing": {"subtotal": price,
                                                       "currency": "CNY",
                                                       "total": total_price,
@@ -441,27 +441,28 @@ class Desney():
                                 "profilePhoneCode": "86",
                                 "countryCode": "CN",
                                 "needsShowTandCInPayment": False}}
+
+        return False, "", "无法获取订单"
         response = self.session.post(
             "https://central.shanghaidisneyresort.com/epep/api/shdr-early-park-entry-pass/comfirm",
             headers=headers,
             verify=False, data=json.dumps(data))
-        print(response.json())
+
         if response.status_code in (200, 201):
             res = response.json()
-            status = int(res.get("data", {}).get("code", 0))
-            if status > 201:
-                error_msg = res.get("data", {}).get("message",{}).get("errorMessage")
-                error_type = res.get("data", {}).get("message",{}).get("errorType")
-                error_code = res.get("data", {}).get("message",{}).get("errorCode")
-                print(error_code, error_type, error_msg)
-                return False
-            return True
+            print("==============Confirm Order================")
+            print(res)
+            print("==============Confirm Order================")
+            session_id = res.get("data", {}).get("paymentSessionId", "")
+            if session_id:
+                return True, session_id, ""
+            else:
+                return False, "", "无法获取订单"
         if response.status_code == 400:
             res = response.json()
-            error_msg = res.get("data", {}).get("message",{}).get("errorMessage")
-            print(error_msg)
-            return False
-        return False
+            error_msg = res.get("data", {}).get("message", {}).get("errorMessage")
+            return False, "", error_msg
+        return False, "", f"服务器错误代码{response.status_code}"
 
     def check_monirng_calander(self):
         headers = {'Accept': 'application/json, text/plain, */*',
@@ -580,9 +581,10 @@ class Desney():
             "https://central.shanghaidisneyresort.com/epep/api/shdr-early-park-entry-pass/calender",
             headers=headers,
             verify=False, data=json.dumps(data))
-        print(response.json())
+
         if response.status_code in (200, 201):
             res = response.json()
+            print(res)
             data = res.get("data", []).get("eligible", [])
         return None
 
@@ -620,20 +622,64 @@ class Desney():
                    'X-Store-Id': 'shdr_mobile',
                    'X-Sw-Id': self.sw_id,
                    'X-View-Type': 'mobile'}
-        data= {"param":{"id":"shdr-early-park-entry-pass"}}
+        data = {"param": {"id": "shdr-early-park-entry-pass"}}
         response = self.session.post(
             "https://central.shanghaidisneyresort.com/epep/api/party",
             headers=headers,
             verify=False, data=json.dumps(data))
+        print("=================get_current_eligible=================")
+        print(response.json())
+        print("=================get_current_eligible=================")
         if response.status_code in (200, 201):
             res = response.json()
-            array = res.get("data", {}).get("eligible", [])
-            vids = [x['visualId'] for x in array]
-            target_date_en = array[0]['expireEndTime']
-            target_date_cn = array[0]['expireTime']
-            start_time = array[0]['startDateTime']
-            return {"vids": vids, "target_date_en": target_date_en, "target_date_cn": target_date_cn, "start_time": start_time}
-        return None
+            eligible = res.get("data", {}).get("eligible", [])
+            no_eligible = res.get("data", {}).get("nonEligible")
+            details = f"绑定了{len(eligible)}张早享卡, 不可选的有{len(no_eligible)}张"
+            if len(eligible) > 0:
+                vids = [x['visualId'] for x in eligible]
+                target_date_en = eligible[0]['expireEndTime']
+                target_date_cn = eligible[0]['expireTime']
+                start_time = eligible[0]['startDateTime']
+                return True, details, {"vids": vids, "target_date_en": target_date_en, "target_date_cn": target_date_cn,
+                                       "start_time": start_time}
+            return False, details, "没有绑定"
+        return False, "服务器异常", {}
+
+    def get_alipay_order_str(self, session_id):
+        headers = {'Accept': 'application/json, text/plain, */*',
+                   'Accept-Encoding': 'gzip, deflate',
+                   'Accept-Language': 'zh,en-US;q=0.9,en;q=0.8',
+                   'Authorization': "BEARER {}".format(self.access_token),
+                   'Connection': 'keep-alive',
+                   'Content-Type': 'application/json',
+                   'Sec-Fetch-Dest': 'empty',
+                   'Sec-Fetch-Mode': 'cors',
+                   'Sec-Fetch-Site': 'same-origin',
+                   'User-Agent': 'Mozilla/5.0 (Linux; Android 12; DCO-AL00 Build/V417IR; wv) '
+                                 'AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 '
+                                 'Chrome/91.0.4472.114 Mobile '
+                                 'Safari/537.36,DISNEY_MOBILE_ANDROID/11500,language/zh',
+                   'X-Guest-Token': self.access_token,
+                   'X-Language': 'zh',
+                   'App-Version': '11.5.0',
+                   'X-Requested-With': 'com.disney.shanghaidisneyland_goo',
+                   'X-Conversation-Id': self.uuid,
+                   'X-View-Type': 'mobile'}
+        data = {"clientIp": "10.0.2.15", "deviceInfo": "Android|Android 12|PGAM10", "payChannel": "APP",
+                "payOption": "ALIPAY", "region": "cn"}
+        response = self.session.post(
+            f"https://apim.shanghaidisneyresort.com/payment-middleware-service/session/{session_id}/transactions",
+            headers=headers,
+            verify=False, data=json.dumps(data))
+        print(response.json())
+        if response.status_code in (200, 201):
+            res = response.json()
+            print("==============Alipay Order================")
+            print(res)
+            print("==============Alipay Order================")
+            return True, res.get("params", {}).get("response_text", ""), ""
+        return False, "", "无法获取订单"
+
 
 if __name__ == '__main__':
     target_date = "2024-04-21"
@@ -641,40 +687,65 @@ if __name__ == '__main__':
     ticket = Desney(conversation)
     users = [
         {
-            "username": "15000128787",
-            "password": "odzLFgdFUXlhxaXbIZocK1OxduX3WJvip+4LpOtNLX7cI6aI1jYNdKF+9HHyYVxs9s6SSoi73N4qJdsqcmh7rQrwOvRPY21awl66y4nGKGg39Vpa62WZTw1seGmoGfl+oWhns5IWFTzUZ4MfnShIRJLnh9/GviBbDfSLnJq/t3sTmOPc3eyfebasI1fr7PtltN2t11Fd8XIMPnnIoQie0kn0GgtXc7EEECdVcnQ3iXUiap7YeI5iE5j8aIcSXZ/WFvprIwveyCCYZRuD1T31SmwliddtEmQh6OmqPZvFZYkQV4YtSv/FwAY1+THqFPoA7W2eFpw5QKORlGlHtr49hQ=="
-        },
-        {
-            "username": "13052739901",
-            "password": "abcd@1234"
-        },
-        {
-            "username": "15000128787",
-            "password": "qwe12345"
+            "username": "13801698115",
+            "password": "qwer1234"
         }
     ]
-    ticket.login(*users[2].values())
-    ticket.get_commerce_token()
-    result = ticket.get_current_eligible()
-    vids = result['vids']
-    target_date_en = result['target_date_en']
-    target_date_cn = result['target_date_cn']
-    quantity = len(vids)
-    result = ticket.get_morning_target_day_price(result['target_date_en'])
-    start_time = result['startDateTime']
-    price = result['price']
-    total_price = str(int(result['totalPrice']) * quantity)
-    result = ticket.confirm_morning_order(vids, "321025197912160221",
-                                          start_time,
-                                          target_date_en,
-                                          target_date_cn,
-                                          price,
-                                          total_price)
+    # 45b44f667b87f93e1305b1d4b8d47d87
+    # -------------------------------------------------------------------
+    result = ticket.login(*users[0].values())
+    ticket.php_sync()
+    ticket.get_current_eligible()
+    ticket.get_morning_target_day_price("2024-04-27")
+    # todo confirm function
+    ticket.get_alipay_order_str("9c638c66f7f98cf4f7eb98e96da057a6")
+
+    # -------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # orderId=0c57d31a-0f93-4e2f-aebb-430a5c0b41de
+    # paymentSessionId=9ce2747d751e9e0724b444c283d6f74e
+
+    # /payment-middleware-service/session/9ce2747d751e9e0724b444c283d6f74e/transactions
+
+    # ticket.get_commerce_token()
+    # result = ticket.get_current_eligible()
+    # vids = result['vids']
+    # target_date_en = result['target_date_en']
+    # target_date_cn = result['target_date_cn']
+    # quantity = len(vids)
+    # result = ticket.get_morning_target_day_price(result['target_date_en'])
+    # start_time = result['startDateTime']
+    # price = result['price']
+    # total_price = str(int(result['totalPrice']) * quantity)
+    # result = ticket.confirm_morning_order(vids, "222424198302052810",
+    #                                       start_time,
+    #                                       target_date_en,
+    #                                       target_date_cn,
+    #                                       price,
+    #                                       total_price)
     # print(result)
     # ticket.get_commerce_orders()
     # print(result)
     # result = ticket.check_monirng_calander()
     # print(result)
     # link_success, vid, target = ticket.link_card("GAL2073023028053262")
-
-

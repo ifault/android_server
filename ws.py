@@ -4,7 +4,7 @@ import uuid
 import asyncio
 from fastapi import APIRouter, WebSocket, HTTPException
 from starlette.websockets import WebSocketDisconnect
-
+from chain import SequentialExecution
 from models import Account
 from service import is_token_expired
 
@@ -47,34 +47,14 @@ async def process_websocket(websocket: WebSocket):
 
 async def handle_task(socket_id: str):
     tasks = []
-
     accounts = await Account.filter(status=0).all()
     for account in accounts:
-        task = asyncio.create_task(handle_order(socket_id, account))
-        tasks.append(task)
-
-    await asyncio.gather(*tasks)
-    await notify(socket_id, -1, "所有订单处理完成")
-
-
-async def handle_order(socket_id: str, account: Account):
-    try:
-        while True:
-            logging.info(f"处理订单: {account.uuid}")
-            status = await handle_status()
-            if status:
-                account.status = 1
-                account.orderStr = "订单详情"
-                account.details = "等待支付"
-                await account.save()
-                await notify(socket_id, 1, "订单等待支付")
-                break
-            else:
-                await asyncio.sleep(10)
-    except Exception as e:
-        account.details = "订单发生异常"
-        await account.save()
-        await notify(socket_id, 1, "订单发生异常")
+        # task = asyncio.create_task(SequentialExecution().execute(account))
+        # tasks.append(task)
+        pass
+    if len(tasks) > 0:
+        await asyncio.gather(*tasks)
+    await notify(socket_id, -1, "无待抢票")
 
 
 async def handle_status():

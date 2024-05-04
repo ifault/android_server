@@ -40,8 +40,8 @@ register_tortoise(app)
 @app.exception_handler(HTTPException)
 async def handle_authentication_exception(request: Request, exc: HTTPException):
     if exc.status_code == 403:
-        return JSONResponse(content={"code": -1, "message": "密钥验证失败,请重新登录获取"}, status_code=exc.status_code)
-    return JSONResponse(content={"code": -1, "message": str(exc.detail)}, status_code=exc.status_code)
+        return JSONResponse(content={"success": False, "message": "密钥验证失败,请重新登录获取"}, status_code=exc.status_code)
+    return JSONResponse(content={"success": False, "message": str(exc.detail)}, status_code=exc.status_code)
 
 
 @app.get("/")
@@ -60,8 +60,6 @@ async def root():
         )
         await account.save()
     return {"message": "Hello World"}
-
-
 app.include_router(api_router, prefix="/api")
 app.include_router(ws_router, prefix="/ws")
 if __name__ == "__main__":
